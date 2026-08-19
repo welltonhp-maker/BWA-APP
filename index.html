@@ -30,7 +30,7 @@
     <h2>🏥 BWA 체성분 환자용 해설기</h2>
     
     <div class="form-group" style="margin-bottom: 18px;">
-        <label>Google Gemini API Key <span class="unit">(최초 1회 자동 저장)</span></label>
+        <label>Google Gemini API Key <span class="unit">(최초 1회 입력 시 자동 저장)</span></label>
         <input type="password" id="apiKey" placeholder="API 키를 입력하세요">
     </div>
 
@@ -102,7 +102,7 @@
 
     <button onclick="generateReport()">환자용 해설문 생성하기</button>
 
-    <div id="loading" class="loading">⏳ 구글 서버 연결 및 해설문 작성 중...</div>
+    <div id="loading" class="loading">⏳ BWA 분석 및 환자용 해설문 작성 중...</div>
     <div id="result">수치를 입력하고 버튼을 누르면 환자 설명용 해설이 여기에 출력됩니다.</div>
 </div>
 
@@ -136,7 +136,7 @@ async function generateReport() {
     document.getElementById('loading').style.display = 'block';
     document.getElementById('result').innerText = '';
 
-    // 자동 판정 계산
+    // 판정 자동 계산
     let bmiStatus = "표준";
     if (bmiVal < 18.5) bmiStatus = "저체중";
     else if (bmiVal >= 25.0) bmiStatus = "비만";
@@ -179,70 +179,32 @@ async function generateReport() {
 - 체지방량 및 체지방률: ${fatMass}kg, ${fatPct}% ➔ [자동판정: ${fatStatus}]
 `;
 
-    // 1단계: API 키로 사용 가능한 모델 자동 조회
-    let candidateUrls = [];
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+
     try {
-        const listResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
-        if (listResp.ok) {
-            const listData = await listResp.json();
-            if (listData.models && listData.models.length > 0) {
-                const validModels = listData.models.filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"));
-                const flashModel = validModels.find(m => m.name.includes("flash"));
-                const chosenModel = flashModel ? flashModel.name : (validModels[0] ? validModels[0].name : null);
-                
-                if (chosenModel) {
-                    // chosenModel 예: "models/gemini-2.0-flash" 또는 "models/gemini-1.5-flash"
-                    candidateUrls.push(`https://generativelanguage.googleapis.com/v1beta/${chosenModel}:generateContent?key=${encodeURIComponent(apiKey)}`);
-                    candidateUrls.push(`https://generativelanguage.googleapis.com/v1/${chosenModel}:generateContent?key=${encodeURIComponent(apiKey)}`);
-                }
-            }
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                system_instruction: { parts: [{ text: systemInstruction }] },
+                contents: [{ parts: [{ text: userPrompt }] }],
+                generationConfig: { temperature: 0.2 }
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const outputText = data.candidates[0].content.parts[0].text;
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('result').innerText = outputText;
+        } else {
+            const errData = await response.json().catch(() => ({}));
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('result').innerText = `연결 오류 (${response.status}):\n${errData.error?.message || 'API 키와 서비스 활성화 상태를 확인해 주세요.'}`;
         }
     } catch (e) {
-        console.log("Model discovery fallback:", e);
-    }
-
-    // 예비 URL 경로 추가 (자동 조회가 안 될 경우 순차 시도)
-    candidateUrls.push(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(apiKey)}`);
-    candidateUrls.push(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${encodeURIComponent(apiKey)}`);
-    candidateUrls.push(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`);
-
-    let success = false;
-    let lastErr = "";
-
-    // 2단계: 최적의 URL로 생성 요청
-    for (const url of candidateUrls) {
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    system_instruction: { parts: [{ text: systemInstruction }] },
-                    contents: [{ parts: [{ text: userPrompt }] }],
-                    generationConfig: { temperature: 0.2 }
-                })
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-                    const outputText = data.candidates[0].content.parts[0].text;
-                    document.getElementById('loading').style.display = 'none';
-                    document.getElementById('result').innerText = outputText;
-                    success = true;
-                    break;
-                }
-            } else {
-                const errJson = await response.json().catch(() => ({}));
-                lastErr = errJson.error?.message || `응답 코드 ${response.status}`;
-            }
-        } catch (err) {
-            lastErr = err.message;
-        }
-    }
-
-    if (!success) {
         document.getElementById('loading').style.display = 'none';
-        document.getElementById('result').innerText = `연결 오류: ${lastErr}\n\nAPI 키가 올바른지 구글 AI 스튜디오에서 다시 한번 확인해 주세요.`;
+        document.getElementById('result').innerText = "네트워크 통신 오류가 발생했습니다. 인터넷 연결 상태를 확인해 주세요.";
     }
 }
 </script>
