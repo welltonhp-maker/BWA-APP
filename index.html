@@ -30,7 +30,7 @@
     <h2>🏥 BWA 체성분 환자용 해설기</h2>
     
     <div class="form-group" style="margin-bottom: 18px;">
-        <label>Google Gemini API Key <span class="unit">(최초 1회 입력 시 자동 저장)</span></label>
+        <label>Google Gemini API Key <span class="unit">(Google AI Studio에서 새로 발급받은 키)</span></label>
         <input type="password" id="apiKey" placeholder="API 키를 입력하세요">
     </div>
 
@@ -102,7 +102,7 @@
 
     <button onclick="generateReport()">환자용 해설문 생성하기</button>
 
-    <div id="loading" class="loading">⏳ Gemini 3.6 모델 분석 및 해설문 작성 중...</div>
+    <div id="loading" class="loading">⏳ BWA 수치 분석 및 환자용 해설문 작성 중...</div>
     <div id="result">수치를 입력하고 버튼을 누르면 환자 설명용 해설이 여기에 출력됩니다.</div>
 </div>
 
@@ -179,46 +179,33 @@ async function generateReport() {
 - 체지방량 및 체지방률: ${fatMass}kg, ${fatPct}% ➔ [자동판정: ${fatStatus}]
 `;
 
-    // 최신 Gemini 3.6 / 3.5 모델 호출
-    const modelsToTry = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.7-flash'];
-    let success = false;
-    let lastErrorMsg = "";
+    // 표준 무료 기본 엔드포인트
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-    for (const model of modelsToTry) {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
-        
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    system_instruction: { parts: [{ text: systemInstruction }] },
-                    contents: [{ parts: [{ text: userPrompt }] }],
-                    generationConfig: { temperature: 0.2 }
-                })
-            });
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                system_instruction: { parts: [{ text: systemInstruction }] },
+                contents: [{ parts: [{ text: userPrompt }] }],
+                generationConfig: { temperature: 0.2 }
+            })
+        });
 
-            if (response.ok) {
-                const data = await response.json();
-                if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-                    const outputText = data.candidates[0].content.parts[0].text;
-                    document.getElementById('loading').style.display = 'none';
-                    document.getElementById('result').innerText = outputText;
-                    success = true;
-                    break;
-                }
-            } else {
-                const errData = await response.json().catch(() => ({}));
-                lastErrorMsg = errData.error?.message || `상태 코드 ${response.status}`;
-            }
-        } catch (e) {
-            lastErrorMsg = e.message;
+        const data = await response.json();
+
+        if (response.ok) {
+            const outputText = data.candidates[0].content.parts[0].text;
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('result').innerText = outputText;
+        } else {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('result').innerText = `구글 API 응답 오류 (${response.status}):\n${data.error?.message || 'API 키를 Google AI Studio에서 새로 생성해 주세요.'}`;
         }
-    }
-
-    if (!success) {
+    } catch (e) {
         document.getElementById('loading').style.display = 'none';
-        document.getElementById('result').innerText = `연결 오류:\n${lastErrorMsg}\n\nAPI 키 상태 및 인터넷 연결을 확인해 주세요.`;
+        document.getElementById('result').innerText = "네트워크 통신 오류가 발생했습니다: " + e.message;
     }
 }
 </script>
