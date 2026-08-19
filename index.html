@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BWA 체성분 환자용 해설기</title>
-    <!-- PWA 설정 연결 -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2b6cb0">
     
@@ -12,61 +11,87 @@
         body { font-family: 'Noto Sans KR', sans-serif; max-width: 720px; margin: 20px auto; padding: 15px; background: #f4f7f9; }
         .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
         h2 { color: #1a365d; border-bottom: 3px solid #2b6cb0; padding-bottom: 10px; margin-top: 0; }
-        .grid-group { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
         .form-group { margin-bottom: 12px; }
         label { display: block; font-weight: bold; margin-bottom: 5px; color: #2d3748; font-size: 13px; }
-        input { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; }
-        button { background: #2b6cb0; color: white; border: none; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 10px; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; font-size: 14px; background: white; }
+        button { background: #2b6cb0; color: white; border: none; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 15px; }
         button:hover { background: #2c5282; }
         #result { margin-top: 20px; padding: 20px; background: #ebf8ff; border-left: 5px solid #3182ce; border-radius: 6px; white-space: pre-line; line-height: 1.7; color: #1a202c; }
         .loading { color: #dd6b20; font-weight: bold; display: none; margin-top: 10px; text-align: center; }
+        .unit-tag { font-size: 11px; color: #718096; font-weight: normal; margin-left: 4px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>🏥 BWA 체성분 환자용 해설기 (PWA)</h2>
+    <h2>🏥 BWA 체성분 환자용 해설기</h2>
     
+    <!-- API 키 설정 -->
     <div class="form-group">
-        <label>Google Gemini API Key (최초 1회 입력 시 자동 저장)</label>
-        <input type="password" id="apiKey" placeholder="발급받은 API 키를 입력하세요">
+        <label>Google Gemini API Key <span class="unit-tag">(최초 1회 자동 저장)</span></label>
+        <input type="password" id="apiKey" placeholder="API 키를 입력하세요">
     </div>
 
-    <div class="grid-group">
-        <div>
-            <label>환자 기본 정보</label>
-            <input type="text" id="patientInfo" placeholder="예: 68세 / 여성">
+    <!-- 1. 기본 정보 -->
+    <div class="grid-2">
+        <div class="form-group">
+            <label>환자 나이 <span class="unit-tag">(세)</span></label>
+            <input type="number" id="age" placeholder="예: 68" inputmode="numeric">
         </div>
-        <div>
-            <label>BMI (체질량지수)</label>
-            <input type="text" id="bmi" placeholder="예: 26.8 kg/m² (과체중)">
-        </div>
-    </div>
-
-    <div class="grid-group">
-        <div>
-            <label>골격근량 (SMM / SMI)</label>
-            <input type="text" id="smm" placeholder="예: SMI 5.2 kg/m² (근감소주의)">
-        </div>
-        <div>
-            <label>근육량 (SLM / 부위별)</label>
-            <input type="text" id="slm" placeholder="예: 하체 불균형 (좌측 5% 부족)">
+        <div class="form-group">
+            <label>성별</label>
+            <select id="gender">
+                <option value="여성">여성</option>
+                <option value="남성">남성</option>
+            </select>
         </div>
     </div>
 
-    <div class="form-group">
-        <label>체지방량 & 체지방률 (PBF)</label>
-        <input type="text" id="pbf" placeholder="예: 체지방량 25.5kg, 체지방률 38.2% (비만)">
+    <!-- 2. BMI & SMI -->
+    <div class="grid-2">
+        <div class="form-group">
+            <label>BMI 수치 <span class="unit-tag">(kg/m²)</span></label>
+            <input type="number" step="0.1" id="bmiVal" placeholder="예: 26.8" inputmode="decimal">
+        </div>
+        <div class="form-group">
+            <label>SMI 골격근량 지수 <span class="unit-tag">(kg/m²)</span></label>
+            <input type="number" step="0.1" id="smiVal" placeholder="예: 5.2" inputmode="decimal">
+        </div>
+    </div>
+
+    <!-- 3. 좌우 근육량 (자동 % 계산용) -->
+    <div class="grid-2">
+        <div class="form-group">
+            <label>좌측 부위 근육량 <span class="unit-tag">(kg)</span></label>
+            <input type="number" step="0.1" id="leftVal" placeholder="예: 4.5" inputmode="decimal">
+        </div>
+        <div class="form-group">
+            <label>우측 부위 근육량 <span class="unit-tag">(kg)</span></label>
+            <input type="number" step="0.1" id="rightVal" placeholder="예: 5.0" inputmode="decimal">
+        </div>
+    </div>
+
+    <!-- 4. 체지방량 & 체지방률 -->
+    <div class="grid-2">
+        <div class="form-group">
+            <label>체지방량 <span class="unit-tag">(kg)</span></label>
+            <input type="number" step="0.1" id="fatMass" placeholder="예: 25.5" inputmode="decimal">
+        </div>
+        <div class="form-group">
+            <label>체지방률 <span class="unit-tag">(%)</span></label>
+            <input type="number" step="0.1" id="fatPct" placeholder="예: 38.2" inputmode="decimal">
+        </div>
     </div>
 
     <button onclick="generateReport()">환자용 해설문 생성하기</button>
 
-    <div id="loading" class="loading">⏳ BWA 공식 기준에 맞춰 해설문을 작성 중입니다...</div>
+    <div id="loading" class="loading">⏳ BWA 수치 및 불균형 %를 계산하여 해설문을 작성 중입니다...</div>
     <div id="result">수치를 입력하고 버튼을 누르면 환자 설명용 해설이 여기에 출력됩니다.</div>
 </div>
 
 <script>
-// 저장된 API 키가 있으면 자동 불러오기
+// API 키 자동 불러오기
 window.onload = function() {
     const savedKey = localStorage.getItem('gemini_api_key');
     if (savedKey) {
@@ -76,51 +101,78 @@ window.onload = function() {
 
 // PWA Service Worker 등록
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
-        .then(reg => console.log('PWA Service Worker 등록 완료', reg))
-        .catch(err => console.log('Service Worker 실패', err));
+    navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW 실패', err));
 }
 
 async function generateReport() {
     const apiKey = document.getElementById('apiKey').value;
-    const patientInfo = document.getElementById('patientInfo').value;
-    const bmi = document.getElementById('bmi').value;
-    const smm = document.getElementById('smm').value;
-    const slm = document.getElementById('slm').value;
-    const pbf = document.getElementById('pbf').value;
+    
+    // 순수 입력 수치 가져오기
+    const age = parseFloat(document.getElementById('age').value) || 0;
+    const gender = document.getElementById('gender').value;
+    const bmiVal = parseFloat(document.getElementById('bmiVal').value) || 0;
+    const smiVal = parseFloat(document.getElementById('smiVal').value) || 0;
+    const leftVal = parseFloat(document.getElementById('leftVal').value) || 0;
+    const rightVal = parseFloat(document.getElementById('rightVal').value) || 0;
+    const fatMass = parseFloat(document.getElementById('fatMass').value) || 0;
+    const fatPct = parseFloat(document.getElementById('fatPct').value) || 0;
 
     if (!apiKey) {
         alert("API Key를 입력해 주세요.");
         return;
     }
 
-    // 입력한 API 키 로컬 저장
     localStorage.setItem('gemini_api_key', apiKey);
-
     document.getElementById('loading').style.display = 'block';
     document.getElementById('result').innerText = '';
 
+    // --- [자동 계산 및 판정 로직] ---
+    
+    // 1. BMI 판정 (BWA 기준)
+    let bmiStatus = "표준";
+    if (bmiVal < 18.5) bmiStatus = "저체중";
+    else if (bmiVal >= 25.0) bmiStatus = "비만";
+    else if (bmiVal >= 23.0) bmiStatus = "과체중";
+
+    // 2. SMI 근감소증 판정 (60세 이상 기준: 남성 7.0 이하, 여성 5.7 이하)
+    let smiStatus = "정상 양호";
+    if (gender === "남성" && smiVal <= 7.0) smiStatus = "근감소증 주의";
+    if (gender === "여성" && smiVal <= 5.7) smiStatus = "근감소증 주의";
+
+    // 3. 좌우 불균형 % 자동 계산
+    let diffPct = 0;
+    let balanceStr = "전신 균형 양호";
+    const maxVal = Math.max(leftVal, rightVal);
+    if (maxVal > 0) {
+        diffPct = ((Math.abs(leftVal - rightVal) / maxVal) * 100).toFixed(1);
+        if (diffPct >= 3.0) {
+            const weakerSide = (leftVal < rightVal) ? "좌측" : "우측";
+            balanceStr = `불균형 (${weakerSide}이 ${diffPct}% 부족)`;
+        }
+    }
+
+    // 4. 체지방률 판정 (남성 18% 이상, 여성 28% 이상 비만)
+    let fatStatus = "정상";
+    if (gender === "남성" && fatPct >= 18.0) fatStatus = "비만 (지방 과다)";
+    if (gender === "여성" && fatPct >= 28.0) fatStatus = "비만 (지방 과다)";
+
+    // --- [제미나이 프롬프트 구성] ---
     const systemInstruction = `
 [Role]
 당신은 병원 환자에게 BWA/InBody 체성분 검사 결과를 알기 쉽게 설명해 주는 '친절한 전문 건강 상담 AI'입니다.
 
-[Official Evaluation Standards]
-- 골격근량(SMI): 60세 이상 기준 남성 7.0, 여성 5.7 kg/m² 이하 시 근감소증 위험.
-- 근육량(SLM): 하체 3% 이상 불균형 시 관절 과하중 주의.
-- 체지방률(PBF): 남성 18%, 여성 28% 이상 시 비만 및 관절 하중 증가.
-- BMI: 18.5~25.0 kg/m² 표준 기준.
-
-[Rules]
-- 전문 용어 대신 '관절 지탱 힘', '체형 밸런스', '지방 하중' 등 쉬운 어휘를 사용하세요.
-- 반드시 [한눈에 보는 나의 체성분 상태], [관절 & 건강 관리 포인트] 2개 영역으로 출력하세요.
+[Prompt Rules]
+1. 전달받은 과체중/근감소/불균형 % 판정 수치를 환자가 한눈에 알 수 있도록 해설문에 명확히 언급해 주세요.
+2. 전문 수치는 '관절 지탱 힘', '체형 밸런스', '지방 하중' 등 친절하고 부드러운 일상 어휘로 번역하세요.
+3. 반드시 [한눈에 보는 나의 체성분 상태], [관절 & 건강 관리 포인트] 2개 섹션으로 구체적인 수치(% 및 판정)를 포함해 작성하세요.
 `;
 
     const userPrompt = `
-- 환자 정보: ${patientInfo}
-- BMI: ${bmi}
-- 골격근량 (SMM/SMI): ${smm}
-- 근육량 및 부위별 균형 (SLM): ${slm}
-- 체지방량 및 체지방률 (PBF): ${pbf}
+- 환자 정보: ${age}세 / ${gender}
+- BMI: ${bmiVal} kg/m² ➔ [자동판정: ${bmiStatus}]
+- 골격근량(SMI): ${smiVal} kg/m² ➔ [자동판정: ${smiStatus}]
+- 근육 균형 (좌측 ${leftVal}kg vs 우측 ${rightVal}kg) ➔ [자동계산: ${balanceStr}]
+- 체지방량 및 체지방률: ${fatMass}kg, ${fatPct}% ➔ [자동판정: ${fatStatus}]
 `;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
@@ -143,7 +195,7 @@ async function generateReport() {
         document.getElementById('result').innerText = outputText;
     } catch (error) {
         document.getElementById('loading').style.display = 'none';
-        document.getElementById('result').innerText = "오류가 발생했습니다. API 키 및 입력 값을 확인해 주세요.";
+        document.getElementById('result').innerText = "오류가 발생했습니다. 입력 수치 및 API 키를 확인해 주세요.";
     }
 }
 </script>
