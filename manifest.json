@@ -1,0 +1,21 @@
+{
+  "name": "BWA 체성분 환자용 해설기",
+  "short_name": "BWA 해설기",
+  "description": "BWA/InBody 체성분 검사 결과 환자용 자동 해설 생성기",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f7f9",
+  "theme_color": "#2b6cb0",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
