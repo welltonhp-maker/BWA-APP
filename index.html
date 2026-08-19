@@ -30,7 +30,7 @@
     <h2>🏥 BWA 체성분 환자용 해설기</h2>
     
     <div class="form-group" style="margin-bottom: 18px;">
-        <label>Google Gemini API Key <span class="unit">(발급받으신 API 키)</span></label>
+        <label>Google Gemini API Key <span class="unit">(최초 1회 자동 저장)</span></label>
         <input type="password" id="apiKey" placeholder="API 키를 입력하세요">
     </div>
 
@@ -136,7 +136,7 @@ async function generateReport() {
     document.getElementById('loading').style.display = 'block';
     document.getElementById('result').innerText = '';
 
-    // 판정 자동 계산
+    // 자동 판정 로직
     let bmiStatus = "표준";
     if (bmiVal < 18.5) bmiStatus = "저체중";
     else if (bmiVal >= 25.0) bmiStatus = "비만";
@@ -179,32 +179,46 @@ async function generateReport() {
 - 체지방량 및 체지방률: ${fatMass}kg, ${fatPct}% ➔ [자동판정: ${fatStatus}]
 `;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // 최신 구글 API 호출 (x-goog-api-key 헤더 전송)
+    const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+    let success = false;
 
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                system_instruction: { parts: [{ text: systemInstruction }] },
-                contents: [{ parts: [{ text: userPrompt }] }],
-                generationConfig: { temperature: 0.2 }
-            })
-        });
+    for (const model of modelsToTry) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+        
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': apiKey 
+                },
+                body: JSON.stringify({
+                    system_instruction: { parts: [{ text: systemInstruction }] },
+                    contents: [{ parts: [{ text: userPrompt }] }],
+                    generationConfig: { temperature: 0.2 }
+                })
+            });
 
-        if (response.ok) {
-            const data = await response.json();
-            const outputText = data.candidates[0].content.parts[0].text;
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('result').innerText = outputText;
-        } else {
-            const errData = await response.json();
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('result').innerText = `구글 오류 (${response.status}): ${errData.error?.message || 'API 키 상태를 확인해 주세요.'}`;
+            if (response.ok) {
+                const data = await response.json();
+                const outputText = data.candidates[0].content.parts[0].text;
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('result').innerText = outputText;
+                success = true;
+                break;
+            } else {
+                const errData = await response.json().catch(() => ({}));
+                console.error(`Model ${model} failed (${response.status}):`, errData);
+            }
+        } catch (e) {
+            console.error(`Fetch error with ${model}:`, e);
         }
-    } catch (e) {
+    }
+
+    if (!success) {
         document.getElementById('loading').style.display = 'none';
-        document.getElementById('result').innerText = "네트워크 통신 오류가 발생했습니다. 인터넷 연결 및 API 키를 확인해 주세요.";
+        document.getElementById('result').innerText = "오류가 발생했습니다.\n발급받으신 API 키를 그대로 다시 입력창에 넣고 실행해 주세요.";
     }
 }
 </script>
