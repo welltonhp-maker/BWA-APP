@@ -136,7 +136,7 @@ async function generateReport() {
     document.getElementById('loading').style.display = 'block';
     document.getElementById('result').innerText = '';
 
-    // 자동 판정 로직
+    // 판정 자동 계산
     let bmiStatus = "표준";
     if (bmiVal < 18.5) bmiStatus = "저체중";
     else if (bmiVal >= 25.0) bmiStatus = "비만";
@@ -179,15 +179,22 @@ async function generateReport() {
 - 체지방량 및 체지방률: ${fatMass}kg, ${fatPct}% ➔ [자동판정: ${fatStatus}]
 `;
 
-    // 최신 구글 API 호출 (x-goog-api-key 헤더 전송)
-    const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash'];
-    let success = false;
+    // 최신 및 정식 호환 엔드포인트 자동 시도 목록
+    const endpointsToTry = [
+        'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent',
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent'
+    ];
 
-    for (const model of modelsToTry) {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+    let success = false;
+    let lastErrMsg = "";
+
+    for (const baseUrl of endpointsToTry) {
+        const targetUrl = `${baseUrl}?key=${encodeURIComponent(apiKey)}`;
         
         try {
-            const response = await fetch(url, {
+            const response = await fetch(targetUrl, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -202,23 +209,25 @@ async function generateReport() {
 
             if (response.ok) {
                 const data = await response.json();
-                const outputText = data.candidates[0].content.parts[0].text;
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('result').innerText = outputText;
-                success = true;
-                break;
+                if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                    const outputText = data.candidates[0].content.parts[0].text;
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('result').innerText = outputText;
+                    success = true;
+                    break;
+                }
             } else {
                 const errData = await response.json().catch(() => ({}));
-                console.error(`Model ${model} failed (${response.status}):`, errData);
+                lastErrMsg = errData.error?.message || `상태 코드 ${response.status}`;
             }
         } catch (e) {
-            console.error(`Fetch error with ${model}:`, e);
+            lastErrMsg = e.message;
         }
     }
 
     if (!success) {
         document.getElementById('loading').style.display = 'none';
-        document.getElementById('result').innerText = "오류가 발생했습니다.\n발급받으신 API 키를 그대로 다시 입력창에 넣고 실행해 주세요.";
+        document.getElementById('result').innerText = `연결 오류: ${lastErrMsg}\nAPI 키를 확인해 주세요.`;
     }
 }
 </script>
